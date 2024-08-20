@@ -22,3 +22,31 @@ Pygame is a Python library that makes it easy to create video games. A library i
 I created it using a tool called Pygame, which is a library in Python. Pygame allows us to create games with graphics and sounds without having to write all the code from scratch. It’s like having a Lego set with pieces that you can assemble to create your own game world.
 
 Now, I’ll show you how the game works and explain some of the features that make it fun and challenging. Let’s see how many pizzas you can catch before running out of lives!"
+
+
+## How to Run the Game
+
+### Prerequisites
+Make sure you have the following installed on your system:
+- Python 3.x
+- Pygame library
+
+### Installation
+
+1. **Clone the Repository**:
+   Clone the repository to your local machine using the following command:
+   ```bash
+   git clone https://github.com/matiassenia/gimmegimmepizzas.git
+   cd gimmegimmepizzas
+
+
+2. **Install the Required Dependencies**:
+   Install the Pygame library if you haven't already:
+   ```bash
+   pip install pygame
+
+3. **Run the game**:
+   Execute the main game script to start playing:
+   ```bash
+   python catch_pizza.py
+

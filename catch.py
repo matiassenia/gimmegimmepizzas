@@ -1,197 +1,148 @@
-from itertools import cycle
-from random import randrange
-from tkinter import Canvas, Tk, messagebox, font
-from PIL import Image, ImageTk
+import pygame
+import random
 
+# Inicializar Pygame
+pygame.init()
+
+# Configuración de la pantalla
 canvas_width = 800
-canvas_height = 500
+canvas_height = 600
+screen = pygame.display.set_mode((canvas_width, canvas_height))
+pygame.display.set_caption("Gimme gimme Pizzas!")
 
-root = Tk()
-root.title("Gimme Gimme Pizzas!")
-c = Canvas(root, width=canvas_width, height=canvas_height)
-c.pack()
+# Cargar música de fondo
+pygame.mixer.music.load("music/background-music.wav")
+pygame.mixer.music.set_volume(0.5)
+pygame.mixer.music.play(-1)
 
-# Cargar la imagen de fondo
-bg_image = Image.open("img/bg-pizzeria.jpeg")
-bg_image = bg_image.resize((canvas_width, canvas_height))
-bg_photo = ImageTk.PhotoImage(bg_image)
-c.create_image(0, 0, image=bg_photo, anchor='nw')
+# Cargar efectos de sonido
+catch_sound = pygame.mixer.Sound("sound/catch.wav")
+dangerous_sound = pygame.mixer.Sound("sound/ouch.wav")
+game_over_sound = pygame.mixer.Sound("sound/game_over.mp3")
 
-# Tamaño de las pizzas
-pizza_width = 95
-pizza_height = 75
+# Cargar imágenes
+bg_image = pygame.image.load("img/bg-pizzeria.jpeg")
+bg_image = pygame.transform.scale(bg_image, (canvas_width, canvas_height))
 
-# Cargar imagen de las pizzas
-pizza_image = Image.open("img/pizza-img.png")
-pizza_image = pizza_image.resize((pizza_width, pizza_height))
-pizza_photo = ImageTk.PhotoImage(pizza_image)
+pizza_image = pygame.image.load("img/pizza-img.png")
+pizza_image = pygame.transform.scale(pizza_image, (95, 75))
 
-# Tamaño de la cesta
-catcher_width = 120
-catcher_height = 120
+catcher_image = pygame.image.load("img/me-img.png")
+catcher_image = pygame.transform.scale(catcher_image, (120, 120))
 
-# Cargar imagen de la cesta
-catcher_image = Image.open("img/me-img.png")
-catcher_image = catcher_image.resize((catcher_width, catcher_height))
-catcher_photo = ImageTk.PhotoImage(catcher_image)
-
-# Posición inicial de la cesta
-catcher_startx = canvas_width / 2 - catcher_width / 2
-catcher_starty = canvas_height - catcher_height - 20
-
-# Crear la imagen
-catcher = c.create_image(catcher_startx, catcher_starty, image=catcher_photo, anchor='nw')
+# Cargar imagen del objeto peligroso
+dangerous_image = pygame.image.load("img/basura.png")
+dangerous_image = pygame.transform.scale(dangerous_image, (95, 75))
 
 # Variables del juego
-pizza_score = 10
-pizza_speed = 500
-pizza_interval = 4000
-difficulty = 0.95
-
-# Fuente para puntuación y vidas
-game_font = ("Helvetica", 25, "bold")
-score_color = "Yellow"
-lives_color = "yellow"
-
-# Puntuación y vidas
-score = 0
-score_text = c.create_text(10, 10, anchor="nw", font=game_font, fill=score_color, text="Score: " + str(score))
+initial_speed = 3
+pizza_speed = initial_speed
+pizza_interval = 1000  # Milisegundos
 lives_remaining = 3
-lives_text = c.create_text(canvas_width - 10, 10, anchor="ne", font=game_font, fill=score_color, text="Lives: " + str(lives_remaining))
-
-# Lista para las pizzas
+score = 0
 pizzas = []
+dangerous_items = []
+font = pygame.font.SysFont('Helvetica', 25, True)
 
-# Función para reiniciar el juego
-def restart_game():
-    global score, lives_remaining, pizzas, pizza_speed, pizza_interval
-    score = 0
-    lives_remaining = 3
-    pizza_speed = 500
-    pizza_interval = 4000
-    c.itemconfigure(score_text, text="Score: " + str(score))
-    c.itemconfigure(lives_text, text="Lives: " + str(lives_remaining))
-    for pizza in pizzas:
-        c.delete(pizza)
-    pizzas = []
-    root.after(1000, create_pizza)
-    root.after(1000, move_pizzas)
-    root.after(1000, check_catch)
+# Posición inicial de la cesta
+catcher_rect = catcher_image.get_rect(midbottom=(canvas_width // 2, canvas_height - 30))
 
-# Función para mostrar el mensaje de game over y preguntar si se quiere jugar de nuevo
-def game_over():
-    answer = messagebox.askyesno("Game Over", "Final Score: " + str(score) + "\nDo you want to play again?")
-    if answer:
-        restart_game()
-    else:
-        root.destroy()
-
-# Función para crear pizzas
+# Función para crear nuevas pizzas y objetos peligrosos
 def create_pizza():
-    if c:
-        x = randrange(10, 740)
-        y = 40
-        new_pizza = c.create_image(x, y, image=pizza_photo, anchor="nw")
-        pizzas.append(new_pizza)
-        root.after(pizza_interval, create_pizza)
+    x = random.randint(10, canvas_width - 105)
+    y = -50
+    if random.randint(0, 4) == 0:  # 20% de probabilidad de que sea un objeto peligroso
+        rect = dangerous_image.get_rect(topleft=(x, y))
+        dangerous_items.append(rect)
+    else:
+        rect = pizza_image.get_rect(topleft=(x, y))
+        pizzas.append(rect)
 
-# Función para mover las pizzas
-def move_pizzas():
-    if c:
-        for pizza in pizzas:
-            try:
-                (pizzax, pizzay) = c.coords(pizza)
-            except:
-                continue
-            c.move(pizza, 0, 10)
-            if pizzay > canvas_height:
-                pizza_dropped(pizza)
-            else:
-                try:
-                    (catcherx, catchery) = c.coords(catcher)
-                    catcherx2 = catcherx + catcher_width
-                    catchery2 = catchery + catcher_height
-                    if catcherx < pizzax < catcherx2 and catchery < pizzay < catchery2:
-                        pizza_caught(pizza)
-                except:
-                    continue
-        root.after(pizza_speed, move_pizzas)
-
-# Función para manejar pizzas atrapadas
-def pizza_caught(pizza):
-    if pizza in pizzas:
-        pizzas.remove(pizza)
-        c.delete(pizza)
-        increase_score(pizza_score)
-
-# Función para manejar pizzas caídas
-def pizza_dropped(pizza):
-    if pizza in pizzas:
-        pizzas.remove(pizza)
-        c.delete(pizza)
-        lose_a_life()
-        if lives_remaining == 0:
-            game_over()
-
-# Función para restar una vida
-def lose_a_life():
+# Función para mover las pizzas y objetos peligrosos
+def move_items():
     global lives_remaining
-    lives_remaining -= 1
-    c.itemconfigure(lives_text, text="Lives: " + str(lives_remaining))
+    for pizza in pizzas[:]:
+        pizza.move_ip(0, pizza_speed)
+        if pizza.bottom > canvas_height:
+            pizzas.remove(pizza)
+            lives_remaining -= 1  # Pierde una vida si la pizza cae al fondo
 
-# Función para verificar si la cesta atrapó una pizza
-def check_catch():
-    try:
-        (catcherx, catchery) = c.coords(catcher)
-        catcherx2 = catcherx + catcher_width
-        catchery2 = catchery + catcher_height
-        for pizza in pizzas:
-            try:
-                (pizzax, pizzay) = c.coords(pizza)
-                pizzax2 = pizzax + pizza_width
-                pizzay2 = pizzay + pizza_height
-                if catcherx < pizzax < catcherx2 and catchery < pizzay < catchery2:
-                    pizzas.remove(pizza)
-                    c.delete(pizza)
-                    increase_score(pizza_score)
-            except:
-                continue
-    except:
-        pass
-    root.after(100, check_catch)
+    for item in dangerous_items[:]:
+        item.move_ip(0, pizza_speed)
+        if item.bottom > canvas_height:
+            dangerous_items.remove(item)  # Simplemente desaparece si el objeto peligroso cae al fondo
 
-# Función para aumentar la puntuación
-def increase_score(points):
-    global score, pizza_speed, pizza_interval
-    score += points
-    pizza_speed = int(pizza_speed * difficulty)
-    pizza_interval = int(pizza_interval * difficulty)
-    c.itemconfigure(score_text, text="Score: " + str(score))
+# Función para detectar colisiones
+def check_collisions():
+    global score, lives_remaining, pizza_speed
+    for pizza in pizzas[:]:
+        if catcher_rect.colliderect(pizza):
+            pizzas.remove(pizza)
+            score += 10  # Incrementar la puntuación al atrapar una pizza
+            pizza_speed += 0.2  # Aumentar la velocidad de caída
+            catch_sound.play()  # Reproducir sonido de atrapar
 
-# Funciones para mover la cesta a la izquierda y derecha
-def move_left(event):
-    if c:
-        try:
-            (x1, y1) = c.coords(catcher)
-        except:
-            return
-        if x1 > 0:
-            c.move(catcher, -20, 0)
+    for item in dangerous_items[:]:
+        if catcher_rect.colliderect(item):
+            dangerous_items.remove(item)
+            lives_remaining -= 1  # Pierde una vida al atrapar un objeto peligroso
+            dangerous_sound.play()  # Reproducir sonido de objeto peligroso
 
-def move_right(event):
-    if c:
-        try:
-            (x1, y1) = c.coords(catcher)
-        except:
-            return
-        if x1 + catcher_width < canvas_width:
-            c.move(catcher, 20, 0)
+# Función de Game Over
+def game_over():
+    pygame.mixer.music.stop()
+    game_over_sound.play()  # Reproducir sonido de game over
+    screen.fill((0, 0, 0))
+    game_over_font = pygame.font.SysFont('Helvetica', 50, True)
+    game_over_text = game_over_font.render("Game Over", True, (255, 0, 0))
+    final_score_text = game_over_font.render(f'Final Score: {score}', True, (255, 255, 255))
+    screen.blit(game_over_text, (canvas_width // 2 - game_over_text.get_width() // 2, canvas_height // 3))
+    screen.blit(final_score_text, (canvas_width // 2 - final_score_text.get_width() // 2, canvas_height // 2))
+    pygame.display.flip()
+    pygame.time.wait(3000)
+    pygame.quit()
+    exit()
 
-# Configuración de eventos y bucles del juego
-c.bind("<Left>", move_left)
-c.bind("<Right>", move_right)
-c.focus_set()
-root.after(1000, create_pizza)
-root.after(1000, move_pizzas)
-root.after(1000, check_catch)
-root.mainloop()
+# Bucle principal del juego
+clock = pygame.time.Clock()
+pygame.time.set_timer(pygame.USEREVENT, pizza_interval)
+running = True
+
+while running:
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+        elif event.type == pygame.USEREVENT:
+            create_pizza()
+
+    # Movimiento de la cesta
+    keys = pygame.key.get_pressed()
+    if keys[pygame.K_LEFT] and catcher_rect.left > 0:
+        catcher_rect.move_ip(-10, 0)
+    if keys[pygame.K_RIGHT] and catcher_rect.right < canvas_width:
+        catcher_rect.move_ip(10, 0)
+
+    move_items()
+    check_collisions()
+
+    # Dibujar todo
+    screen.blit(bg_image, (0, 0))
+    screen.blit(catcher_image, catcher_rect)
+    for pizza in pizzas:
+        screen.blit(pizza_image, pizza)
+    for item in dangerous_items:
+        screen.blit(dangerous_image, item)
+
+    # Mostrar puntuación y vidas
+    score_text = font.render(f'Score: {score}', True, (255, 255, 0))
+    lives_text = font.render(f'Lives: {lives_remaining}', True, (255, 255, 0))
+    screen.blit(score_text, (10, 10))
+    screen.blit(lives_text, (canvas_width - 120, 10))
+
+    pygame.display.flip()
+    clock.tick(60)
+
+    if lives_remaining <= 0:
+        game_over()
+
+pygame.quit()
